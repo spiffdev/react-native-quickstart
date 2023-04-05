@@ -5,114 +5,66 @@
  * @format
  */
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+import { SpiffCommerceClient, WorkflowExperience } from "@spiffcommerce/core";
+import { SpiffCommerce3DPreviewService } from "@spiffcommerce/preview";
+import React, { useEffect, useRef, useState } from "react";
+import { View } from "react-native";
+import Canvas from "react-native-canvas";
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+// const integrationProduct = "5141150b-8419-4e24-ae3f-9cab47a7920f"; // Sample Serving Board
+// const workflowID = "3b09df2b-8808-4b1c-955a-d4172e706d11"; // Sample Serving Board Workflow
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+/**
+ * This is the main wrapper component for the App editor.
+ * See app in src/index.tsx for usage.
+ */
+const App: React.FunctionComponent<{
+    /**
+     * The workflow to be used.
+     */
+    workflowId: string;
+    /**
+     * The integration product associated to the workflow being run.
+     */
+    integrationProductId: string;
+}> = ({ workflowId, integrationProductId }) => {
+    const canvasRef = useRef<Canvas>(null);
+    const [workflowExperience, setWorkflowExperience] = useState<WorkflowExperience | undefined>(undefined);
 
-function Section({children, title}: SectionProps): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-}
+    // This effect handles initialize of the workflow experience when the user first arrives at the page. Loading
+    // saved designs will be handled within App seperately.
+    useEffect(() => {
+        if (!canvasRef.current) return;
+        const init = async () => {
+            const client = new SpiffCommerceClient({});
+            await client.initFromIntegrationProduct(integrationProductId);
+            const experience = await client.getWorkflowExperience(workflowId, undefined, (workflow) => {
+                const canvas = new Canvas({ref:(canvas) => {}});
+                return new SpiffCommerce3DPreviewService(canvas as unknown as HTMLCanvasElement, workflow.globalPreviewConfig);
+            });
+            experience.getWorkflowManager().getPreviewService().registerView(canvasRef.current);
+            setWorkflowExperience(experience);
+        };
+        init().then(() => console.log("Workflow Experience Initialized"));
+        // We only want this to run when the parameters passed in change. The workflow experience
+        // changing internally due to saved designs etc.. Should not trigger this.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [canvasRef, integrationProductId, workflowId]);
 
-function App(): JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
+    return (
         <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+            style={{
+                width: "100%",
+                height: "100%",
+                overflow: "hidden",
+            }}
+        >
+            <Canvas
+                ref={canvasRef}
+                style={{ width: "100%", height: "100%" }}
+            />
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
+    );
+};
 
 export default App;
