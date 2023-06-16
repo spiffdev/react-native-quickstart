@@ -28,10 +28,18 @@ const App: React.FunctionComponent<{
         const init = async () => {
             // TODO: Core currently does not provide a way to supply a custom storage provider. This should be updated once that is available.
             const client = new SpiffCommerceClient({});
-            await client.initFromIntegrationProduct(integrationProductId);
-            const experience = await client.getWorkflowExperience(workflowId, undefined, (workflow) => {
-                // TODO: implement a 3D preview service.
-            });
+            const experience = await client.getWorkflowExperience(
+                workflowId,
+                undefined,
+                (workflow) => {
+                    // TODO: implement a 3D preview service.
+                },
+                {
+                    type: "integration",
+                    integrationProductId,
+                    workflowId: workflowId,
+                },
+            );
             // experience.getWorkflowManager().getPreviewService().registerView(canvasRef.current);
             setWorkflowExperience(experience);
         };
